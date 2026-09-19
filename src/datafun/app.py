@@ -1,7 +1,7 @@
 """src/datafun/app.py - Project script.
 
-Author: Denise Case
-Date: 2026-08-23
+Author: Luke Stevers
+Date: 2026-09-18
 
 HOW TO RUN THIS FILE:
 
@@ -65,6 +65,8 @@ from pathlib import Path
 from typing import Final
 
 from datafun_toolkit.logger import get_logger, log_header, log_path
+import matplotlib.pyplot as plt
+import pandas as pd
 
 from datafun.etvl_csv import run_etvl_csv
 from datafun.etvl_json import run_etvl_json
@@ -94,10 +96,16 @@ and write the statistics to a text file.
 
 CSV_INPUT: Final[Path] = RAW_DIR / "2020_happiness.csv"
 CSV_OUTPUT: Final[Path] = PROCESSED_DIR / "csv_ladder_score_stats.txt"
+CSV_PLOT_OUTPUT: Final[Path] = PROCESSED_DIR / "happiness_life_expectancy_scatter.png"
 CSV_COLUMN: Final[str] = "Ladder score"  # CUSTOM
 WHY_CSV_COLUMN: Final[str] = r"""
 The ladder score is the survey's overall happiness measure,
 so its distribution is the natural first summary of this dataset.
+"""
+WHY_CSV_SCATTER: Final[str] = r"""
+Healthy life expectancy and Ladder score are both numerical
+measurements, so a scatter plot can help explore whether there
+is a relationship between health and reported happiness.
 """
 
 # === JSON: COUNT RECORDS BY A CATEGORY ===
@@ -208,12 +216,38 @@ def main() -> None:
     LOG.info(f"Pipeline: {CSV_PIPELINE_DESCRIPTION}")
     LOG.info(f"Column: {CSV_COLUMN}")
     LOG.info(f"Why: {WHY_CSV_COLUMN}")
+    LOG.info(f"Why scatter plot: {WHY_CSV_SCATTER}")
+
     run_etvl_csv(
         input_file=CSV_INPUT,
         output_file=CSV_OUTPUT,
         column_name=CSV_COLUMN,
         log=LOG,
     )
+    # Create a scatter plot comparing healthy life expectancy
+    # with the happiness Ladder score.
+
+    LOG.info("Creating happiness scatter plot.")
+
+    happiness_df: pd.DataFrame = pd.read_csv(CSV_INPUT)
+
+    # Remove rows that are missing either value.
+    plot_df = happiness_df[["Healthy life expectancy", "Ladder score"]].dropna()
+
+    plt.figure(figsize=(10, 6))
+
+    plt.scatter(plot_df["Healthy life expectancy"], plot_df["Ladder score"])
+
+    plt.xlabel("Healthy Life Expectancy")
+    plt.ylabel("Ladder Score")
+    plt.title("Healthy Life Expectancy vs. Happiness")
+    plt.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(CSV_PLOT_OUTPUT, dpi=300)
+    plt.close()
+
+    LOG.info(f"Scatter plot saved to: {CSV_PLOT_OUTPUT}")
 
     LOG.info("===================================")
     LOG.info("JSON pipeline")
